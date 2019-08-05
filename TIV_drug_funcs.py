@@ -4,7 +4,7 @@ Returns viral titre measurements (8 days) of solved TIV model variations
 
 from scipy.integrate import solve_ivp
 import numpy as np
-import matplotlib.pyplot as plt
+from scipy import stats as st
 
 def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], param = [
 
@@ -24,7 +24,7 @@ def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], para
 
     # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
     if drug[0] == 'rep':
-        pV = pV *  (1 - drug[1])
+        pV = pV * (1 - drug[1])
 
     if drug[0] == 'ent':
         beta = beta * (1 - drug[1])
@@ -45,27 +45,36 @@ def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], para
     sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='RK45', t_eval=measurement_times)
     return sol  # NOTE: Returns raw (not log) values
 
-def PK_model(drug, param, max_time):
-    rhs = epsilon_max * D
-    return drug  # [type, epsilon]
-# Generate placebo data
+'''
+Pharmacokinetics model (currently keeping dose constant though)
+'''
 
-# Parameters expressed as log10 (e.g. deltaV = 1e+5)
-pV = 12.6  # This is technically production rate of infectious virions though not all V are infectious
-beta = 5e-7
-V0 = 1e+4
-T0 = 7e+7
-g = 0.8
-deltaV = 4
-deltaI = 2
+def PK_model(param, max_time):
+    epsilon_max = param[0]
+    EC50 = param[1]
+    D = param[2]
 
-param = [g, beta, deltaI, pV, deltaV, V0]
+    epsilon = (epsilon_max * D) / (D + EC50)
 
-plc_data = TIV_drug_model(drug='plc', param=param, max_time=8)
+    return epsilon  # [type, epsilon]
 
-# Generate entry-blocking drug data
-#ent_drug = [ent, #epsilon]
 
-# Generate replication-blocking drug data
-#rep_drug = [rep, #epsilon]
+def TIV_drug_ll(V_data, drug, param, max_time):  # Where I_data = I (infected individuals) as retrieved from data
 
+    ll = 0
+
+    sol = TIV_drug_model(drug, param, max_time)
+    if sol.success == False:  #Reject parameter if solve_ivp failed
+        ll = -1 * np.inf
+        print('solve_ivp failed for param ' + str(param) + ' so rejecting value')
+        return ll
+
+    V_model = sol.y[2]  # Obtain model values for I, given new parameters
+    exp_sd = 1.5  # sd of experimental measurements of viral titre
+
+    for k in range(len(V_data)):
+        new_ll = st.norm.logpdf(np.log(V_data[k]), loc=np.log(V_model[k]), scale=exp_sd)  # norm.logpdf(i, loc=mu, scale=sd)
+
+        ll = ll + new_ll
+
+    return ll
