@@ -3,7 +3,6 @@ Show MCMC graphs
 """
 
 import matplotlib.pyplot as plt
-import pandas as pd
 
 
 def plot_chain(chain):
@@ -17,6 +16,7 @@ def plot_chain(chain):
     plt.savefig('ll_chain.png')  # Save as .png
 
     # Plotting each parameter
+
     for i in columns[1:]:
         param = i
 

@@ -2,6 +2,7 @@
 Generate simulation data
 '''
 
+
 # Module import
 import TIV_drug_funcs as TIV
 import test_fit as test
@@ -15,6 +16,8 @@ import math
 import MCMC_chain as MCMC
 import TIV_plot
 
+import TIV_drug_sim_data as sim_data
+
 '''
 MCMC Set-up
 '''
@@ -25,9 +28,15 @@ MCMC Set-up
 # Save chain ('y') or not (anything else)
 save = 'y'
 
-
+'''
 # Generate simulation data
-import TIV_drug_sim_data
+V_data = sim_data.plc_n1_raw
+drug = 'plc'
+V_drug_data = TIV_Rubi_data.OST_n1
+
+max_time = len(V_data)
+time = range(0, max_time)
+'''
 
 # Import viral load data (will try fitting first with plc_n1)
 import TIV_Rubi_data
@@ -38,7 +47,6 @@ V_drug_data = TIV_Rubi_data.OST_n1
 
 max_time = len(V_data)
 time = range(0, max_time)
-
 
 # Number of iterates
 n_iterates = 1000
@@ -51,28 +59,28 @@ def prior_param_belief_uni(min, max):
 def prior_param_belief_normal(mean, var):
     return st.norm(loc=mean, scale=var)
 
-# TODO: Make into a dictionary {name, w, prior, guess}
-# Proposal widths (1 for each parameter)
-w = [0.00075, 7.5e-6, 0.00075, 0.00075, 0.00075, 0.00075]  #FIXME: Need to find a good one for beta particularly
-
 
 # Setting parameters
-param_names = ['g', 'beta', 'deltaI', 'pV', 'deltaV', 'V0']
+param_names = ['beta_dot', 'beta', 'deltaI', 'pV', 'deltaV', 'V0']
 
 # Input own parameters (e.g. from previously run chain)
-init_param = TIV_drug_sim_data.plc_param
-#init_param = [g, beta, deltaI, pV, deltaV, V0]
+init_param = sim_data.plc_param
 
+# TODO: Try hand-fitted parameters:
+
+# TODO: Make into a dictionary {name, w, prior, guess}
+# Proposal widths (1 for each parameter)
+w = [7.5e-5, 7.5e-5, 0.075, 0.075, 0.075, 0.075]
 
 # Setting prior belief as that parameters are within a reasonable given range
-g_prior_fun = prior_param_belief_uni(0, 2)
-beta_prior_fun = prior_param_belief_uni(1e-7, 1e-5) #(0, 0.5) # (e-12, e-4)  #(0, 0.5)
-deltaI_prior_fun = prior_param_belief_uni(0, 6)
-pV_prior_fun = prior_param_belief_uni(0, 24) #(0, 24) #(-6, 6) #(150, 250)
-deltaV_prior_fun = prior_param_belief_uni(0, 8)
-V0_prior_fun = prior_param_belief_uni(1e+3, 1e+5)
+beta_dot_prior_fun = prior_param_belief_uni(1e-12, 1)
+beta_prior_fun = prior_param_belief_uni(1e-12, 1) #(0, 0.5) # (e-12, e-4)  #(0, 0.5)
+deltaI_prior_fun = prior_param_belief_uni(0, 1e+3)
+pV_prior_fun = prior_param_belief_uni(0, 1e+3) #(0, 24) #(-6, 6) #(150, 250)
+deltaV_prior_fun = prior_param_belief_uni(0, 1e+3)
+V0_prior_fun = prior_param_belief_uni(1e-3, 1e+4)
 
-prior_funcs = [g_prior_fun, beta_prior_fun, deltaI_prior_fun, pV_prior_fun, deltaV_prior_fun, V0_prior_fun]
+prior_funcs = [beta_dot_prior_fun, beta_prior_fun, deltaI_prior_fun, pV_prior_fun, deltaV_prior_fun, V0_prior_fun]
 
 
 # Choose to fit TIV or TLIV model
@@ -81,7 +89,7 @@ model = TIV.TIV_drug_model
 
 
 # Start simulation
-chain_vals = MCMC.run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_iterates, w, prior_funcs, save, calibrate_truth=True)
+chain_vals = MCMC.run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_iterates, w, prior_funcs, save, calibrate_truth=False)
 
 chain = chain_vals[0]
 best_MCMC_param = chain_vals[1]

@@ -98,40 +98,30 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
 
             if math.isnan(r):
                 alpha = 0
-                if i % 100 == 0:
-                    print('r was a NaN')
-                    print('So param ' + str(prop_param) + ' were rejected')
+                print('r was a NaN')
 
             else:
                 # Is likelihood ratio less than or equal to one
                 alpha = min(1, r)
 
-                if i % 100 == 0:
-                    print('r = ' + str(r))
+                print('r = ' + str(r))
 
             # Random number between 0 to 1
             # So will have weighted chance of possibly accepting depending on how likely the new parameter is
             test = np.random.uniform(0, 1)
             # Maybe accept
             if test < alpha:
-                try:
-                    ll = prop_ll.copy()
-                    param = prop_param.copy()
-                    accepts[j] += 1
+                ll = prop_ll.copy()
+                param = prop_param.copy()
+                accepts[j] += 1
 
-                    if i % 100 == 0:
-                        print('Parameters proposed = ' + str(prop_param))
-                        print('Accept new parameters ' + str(param))
+                print('Parameters proposed = ' + str(prop_param))
+                print('Accept new parameters ' + str(param))
 
-                except AttributeError:
-                    if i % 100 == 0:
-                        print('In AttributeError, ll was = ' + str(prop_ll))
-                        print('So param ' + str(prop_param) + ' were rejected')
 
             # "Else" reject, though nothing to write
             else:
-                if i % 100 == 0:
-                    print('Reject parameters ' + str(prop_param))
+                print('Reject parameters ' + str(prop_param))
 
             # Store iterate
             chain[i, 0] = ll
@@ -154,7 +144,7 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
 
     # Modifying data to make
     # easier to retrieve values
-    chain = pd.DataFrame(chain, columns=['ll', 'g', 'beta', 'deltaI', 'pV', 'deltaV', 'V0'])  # TODO: CHANGE IF CHANGING PARAM FITTING
+    chain = pd.DataFrame(chain, columns=['ll'] + param_names)
 
     best_ll_index = chain[['ll']].idxmax()
     best_ll_row = chain.iloc[best_ll_index, :]
