@@ -6,7 +6,7 @@ from scipy.integrate import solve_ivp
 import numpy as np
 from scipy import stats as st
 
-def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], param = [
+def TIV_drug_model(Drug, param, max_time):  # where drug = [type, epsilon], param = [
 
     # Write differential equations describing TIV drug model (right-hand side)
     def rhs(t, y):
@@ -24,13 +24,11 @@ def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], para
     deltaV = param[4]
 
     # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
-    if drug[0] == 'rep':
-        pV = pV * (1 - drug[1])
+    if Drug.type == 'rep':
+        pV = pV * (1 - Drug.epsilon)
 
-    if drug[0] == 'ent':
-        beta_dot = beta_dot * (1 - drug[1])
-
-    # Else leave parameters unchanged (e.g. placebo)
+    if Drug.type == 'ent':
+        beta_dot = beta_dot * (1 - Drug.epsilon)
 
     # Initial conditions
     T0 = 4e+8  # Fixing this parameter 7e+7
@@ -46,6 +44,47 @@ def TIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], para
     sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
     return sol  # NOTE: Returns raw (not log) values
 
+
+def TIV_Drug_model(Drug, param, max_time):  # where drug = [type, epsilon], param = [
+
+    # Write differential equations describing TIV drug model (right-hand side)
+    def rhs(t, y):
+        T, I, V, D = y
+        return [g * T * (1 - (T + I) / T0) - (beta_dot * V * T),
+                beta_dot * V * T - (deltaI * I),
+                pV * (1 - epsilon) * I - (deltaV * V) - (beta * V * T)]
+
+    # Input parameters
+    g = 0.8
+    beta_dot = param[0]
+    beta = param[1]
+    deltaI = param[2]
+    pV = param[3]
+    deltaV = param[4]
+
+    # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
+    '''
+    if Drug.type == 'rep':
+        pV = pV * (1 - Drug.epsilon)
+
+    if Drug.type == 'ent':
+        beta_dot = beta_dot * (1 - Drug.epsilon)
+    '''
+    # Else leave parameters unchanged (e.g. placebo)
+
+    # Initial conditions
+    T0 = 4e+8  # Fixing this parameter 7e+7
+    I0 = 0
+    V0 = param[5]
+
+    y_init = [T0, I0, V0]
+
+    # Create an array of measurement time points (Day 1, 2, 3, ... 8)
+    measurement_times = np.arange(0, max_time, 1)
+
+    # Solve TIV
+    sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
+    return sol  # NOTE: Returns raw (not log) values
 
 def TLIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], param = [
 
@@ -94,7 +133,6 @@ def TLIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], par
 def TIV_drug_ll(V_data, drug, param, max_time):  # Where I_data = I (infected individuals) as retrieved from data
 
     ll = 0
-    V_data = np.log(V_data)
 
     sol = TIV_drug_model(drug, param, max_time)
     if sol.success == False:  #Reject parameter if solve_ivp failed

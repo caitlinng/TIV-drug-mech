@@ -43,8 +43,10 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
     now = datetime.datetime.now()  # Record time chain started
     calibrate = calibrate_truth  # Calibrate or not
 
+    V_data_log = np.log(V_data)
     # Calculate the log likelihood of the initial guess
-    init_ll = model_ll(V_data, drug, init_param, max_time)
+    init_ll = model_ll(V_data_log, drug, init_param, max_time)
+    print('init_ll = ' + str(init_ll))
 
     # And log likelihood of all subsequent guesses
     param = init_param.copy()
@@ -88,7 +90,7 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
 
             else:
                 # Calculate LL of proposal
-                prop_ll = model_ll(V_data, drug, prop_param, max_time)  # TODO: Testing with TLIV fitting
+                prop_ll = model_ll(V_data_log, drug, prop_param, max_time)  # TODO: Testing with TLIV fitting
 
             # Decide on accept/reject
             prior_fun = prior_funcs[j]  # Grab correct prior function
@@ -142,11 +144,13 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
 
     # Modifying data to make
     # easier to retrieve values
-    chain_half = pd.DataFrame(chain[int(n_iterates / 2):, :], columns=['ll'] + param_names)
+#    chain_half = pd.DataFrame(chain[int(n_iterates / 2):, :], columns=['ll'] + param_names)
     MCMC_param = chain[-1, 1:]  # TODO: Look at last estimated ll
 
-    best_ll_index = chain_half[['ll']].idxmax()
-    best_ll_row = chain_half.iloc[best_ll_index, :]
+    chain = pd.DataFrame(chain, columns=['ll'] + param_names)
+
+    best_ll_index = chain[['ll']].idxmax()
+    best_ll_row = chain.iloc[best_ll_index, :]
 
     if save == 'y':
         f = open('chain_info.txt', 'a')
@@ -155,9 +159,9 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
         f.write('\n' + 'init_param = ' + str(init_param))
         f.write('\n' + 'w = ' + str(w))
         f.write('\n' + 'n_iterates = ' + str(n_iterates))
-        f.write('\n' + str(chain_half))
+        f.write('\n' + str(chain))
         f.write('\n' + 'Last tested parameters were: ' + str(MCMC_param))
         f.write('\n' + 'best_ll row = ' + str(best_ll_row))
         f.close()
 
-    return [chain_half, best_ll_row[1:], MCMC_param]
+    return [chain, best_ll_row[1:], MCMC_param]

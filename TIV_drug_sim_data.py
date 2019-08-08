@@ -9,7 +9,7 @@ from test_fit import test_fit
 
 
 # Generate placebo data
-final_fit_param = [0.001, 0.0002, 3, 75, 28, 5]
+final_fit_param = [0.000217, 0.000751, 3.3, 75, 35, 6]
 
 # Parameters expressed as log10 (e.g. deltaV = 1e+5)
 T0 = 7e+7
@@ -23,12 +23,12 @@ V0 = 1e+2
 plc_param = [beta_dot, beta, deltaI, pV, deltaV, V0]
 
 # Generate placebo data with Cao's parameters
-plc_data = TIV.TIV_drug_model(drug='plc', param=plc_param, max_time=8)
+#plc_data = TIV.TIV_drug_model(Drug='plc', param=plc_param, max_time=8)
 #test_fit(TIV.TIV_drug_model, 'plc', plc_data.y[2], plc_param, len(plc_data.y[2]))
 
 
 # Generate placebo data with fitted parameters from real data
-fitted_data = TIV.TIV_drug_model(drug='plc', param=final_fit_param, max_time=8)
+fitted_data = TIV.TIV_drug_model(Drug='plc', param=final_fit_param, max_time=8)
 #test_fit(TIV.TIV_drug_model, 'plc', fitted_data.y[2], fitted_param, len(plc_data.y[2]))
 
 '''
@@ -59,9 +59,7 @@ test_fit(TIV.TLIV_drug_model, 'plc', TLIV_plc_data.y[2], plc_TLIV_param, len(TLI
 import TIV_Rubi_data
 V_data = TIV_Rubi_data.plc_n1_raw
 
-test_param = [0.001124857507074551, 6.740985084422904e-06, 3.3125662750338463, 149.81383650294944, 6.489714187394734, 101.06087987775142]
-test_param = [0.000011959, 0.000000234, 3, 5, 28, 1]
-test_param = [0.0011959, 0.000234, 2.95102, 75, 28.11615, 5]
+test_param = [0.000217, 0.000751, 3.3, 75, 35, 6]
 
-test_fit(model=TIV.TIV_drug_model, drug='plc', true_data=V_data, fitted_param=test_param, max_time=len(V_data))
+#test_fit(model=TIV.TIV_drug_model, drug='plc', true_data=V_data, fitted_param=test_param, max_time=len(V_data))
 

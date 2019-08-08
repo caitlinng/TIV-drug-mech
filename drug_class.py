@@ -1,89 +1,111 @@
 """
 Create class for drug
 """
-
-from scipy.integrate import solve_ivp
 import numpy as np
+import math
+from scipy.integrate import solve_ivp
 
-'''
-Pharmacokinetics model (currently keeping dose constant though)
-'''
 
-def PK_model(drug, max_time):
-    '''
-    def D_model(param, max_time):
-        # Write differential equations describing TIV drug model (right-hand side)
-        def rhs(t, y):
-            D = y
-            return w * ka * D_admin * e ** (ka * (t - tadmin)) - ke * D
+class Drug:
+    # Instance attributes
+    def __init__(self, type, EC50, epsilon_max, dose_admin, t_admin, ka, ke, omega):
+        self.type = type
+        self.EC50 = EC50
+        self.epsilon_max = epsilon_max
+        self.dose_admin = dose_admin
+        self.t_admin = t_admin
+        self.ka = ka
+        self.ke = ke
+        self.omega = omega
+
+    def solve_TIV(self, param, max_time):  # where drug = [type, epsilon], param = [
 
         # Input parameters
-        w = 4.63
-        ka = 11.04
-        ke = 2.64
+        g = 0.8
+        beta_dot = param[0]
+        beta = param[1]
+        deltaI = param[2]
+        pV = param[3]
+        deltaV = param[4]
 
         # Initial conditions
-        D_admin = 75 # mg
-        y_init = D_admin
+        D0 = self.dose_admin
+        T0 = 4e+8  # Fixing this parameter 7e+7
+        I0 = 0
+        V0 = param[5]
+
+        y_init = [D0, T0, I0, V0]
+
+        # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
+        if self.type == 'rep':
+            # Write differential equations describing TIV drug model (right-hand side)
+            def rhs(t, y):
+                D, T, I, V = y
+                return [self.omega * self.ka * self.dose_admin * math.e ** (self.ka * (t - self.t_admin)) - self.ke * D,
+                        g * T * (1 - (T + I) / T0) - (beta_dot * V * T),
+                        beta_dot * V * T - (deltaI * I),
+                        pV * (1 - (self.epsilon_max * D) / (D + self.EC50)) * I - (deltaV * V) - (beta * V * T)]
 
         # Create an array of measurement time points (Day 1, 2, 3, ... 8)
         measurement_times = np.arange(0, max_time, 1)
 
         # Solve TIV
-        sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='RK45', t_eval=measurement_times)
+        sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
         return sol  # NOTE: Returns raw (not log) values
-    '''
-
-    epsilon_max = param[0]  #0.98
-    EC50 = param[1]  # 30
-    #D = D_model(param, max_time)
-    D = param[2]
-
-    epsilon = (epsilon_max * D) / (D + EC50)
-
-    return epsilon  # [type, epsilon]
 
 
-class Drug:
-    # Instance attributes
-    def __init__(self, type, EC50, epsilon_max, dose_admin, ka, ke, omega, t_admin):
-        self.type = type
-        self.EC50 = EC50
-        self.epsilon_max = epsilon_max
-        self.dose_admin = dose_admin
-        self.ka = ka
-        self.ke = ke
-        self.omega = omega
-        self.t_admin = t_admin
+OST = Drug(type='rep', EC50=36.1, epsilon_max=0.98, dose_admin=75, t_admin=0, ka=11.04, ke=2.64, omega=4.63)
 
 
-    def solve_epsilon(self, time):
-        def solve_dose(self, time):
-            # Solve d for given time point
-            return self.omega * self.ka * self.dose_admin * e ** (self.ka * (time - self.tadmin)) - (self.ke * D)
+sol = OST.solve_TIV(param=[0.000217, 0.000751, 3.3, 75, 35, 6], max_time=8)
 
-        D = solve_dose(time)
-        return (self.epsilon_max * D) / (D + self.EC50)
-
-OST = Drug(type='ent_drug', EC50=36.1, epsilon_max=0.98, dose_admin=75, ka=11.04, ke=2.64, omega=4.63, t_admin=)
+# Plot
 
 class EntDrug(Drug):
     pass
 
-
+'''
 class RepDrug(Drug):
-    pass
+    def solve_TIV(param, max_time):  # where drug = [type, epsilon], param = [
 
+        # Input parameters
+        g = 0.8
+        beta_dot = param[0]
+        beta = param[1]
+        deltaI = param[2]
+        pV = param[3]
+        deltaV = param[4]
 
-# Generate OST (rep drug) parameters
-epsilon_max = 0.98  # From (Cao et al, 2017)
-EC50 = 36.1  # IC50 against IBV = 36.1 nm
-D = 75e+6  # 75 mg (though may need to do titration)
+        # Initial conditions
+        D0 = dose_admin
+        T0 = 4e+8  # Fixing this parameter 7e+7
+        I0 = 0
+        V0 = param[5]
 
-OST_param = [epsilon_max, EC50, D]
+        y_init = [D0, T0, I0, V0]
 
-OST_epsilon = PK_model(OST_param, max_time=8)
+        # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
+        if Drug.type == 'rep':
+            # Write differential equations describing TIV drug model (right-hand side)
+            def rhs(t, y):
+                D, T, I, V = y
+                return [omega * ka * dose_admin * math.e ** (ka * (t - t_admin)) - ke * D,
+                        g * T * (1 - (T + I) / T0) - (beta_dot * V * T),
+                        beta_dot * V * T - (deltaI * I),
+                        pV * (1 - (epsilon_max * D) / (D + EC50)) * I - (deltaV * V) - (beta * V * T)]
+
+        # Create an array of measurement time points (Day 1, 2, 3, ... 8)
+        measurement_times = np.arange(0, max_time, 1)
+
+        # Solve TIV
+        sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
+        return sol  # NOTE: Returns raw (not log) values
 
 
 class Param:
-    pass
+    def __init__(self, name, w, prior, guess):
+        self.name = name
+        self.w = w
+        self.prior = prior
+        self.guess = guess
+'''
