@@ -10,7 +10,7 @@ def plot_chain(chain):
     columns = list(chain)
 
     # Plotting ll
-    chain.plot(kind= 'line', y = 'll')
+    chain.plot(kind='line', y ='ll')
     plt.ylabel('Log Likelihood')
     plt.xlabel('Iterate')
     plt.savefig('ll_chain.png')  # Save as .png

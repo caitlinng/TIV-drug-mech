@@ -90,19 +90,6 @@ def TLIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], par
     return sol  # NOTE: Returns raw (not log) values
 
 
-'''
-Pharmacokinetics model (currently keeping dose constant though)
-'''
-
-def PK_model(param, max_time):
-    epsilon_max = param[0]
-    EC50 = param[1]
-    D = param[2]
-
-    epsilon = (epsilon_max * D) / (D + EC50)
-
-    return epsilon  # [type, epsilon]
-
 
 def TIV_drug_ll(V_data, drug, param, max_time):  # Where I_data = I (infected individuals) as retrieved from data
 
@@ -124,6 +111,7 @@ def TIV_drug_ll(V_data, drug, param, max_time):  # Where I_data = I (infected in
         ll = ll + new_ll
 
     return ll
+
 
 def TLIV_drug_ll(V_data, drug, param, max_time):  # Where I_data = I (infected individuals) as retrieved from data
 

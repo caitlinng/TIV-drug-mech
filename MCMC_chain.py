@@ -115,7 +115,6 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
                 param = prop_param.copy()
                 accepts[j] += 1
 
-                print('Parameters proposed = ' + str(prop_param))
                 print('Accept new parameters ' + str(param))
 
 
@@ -128,10 +127,12 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
             chain[i, 1:] = param
 
             # Update chain.txt file with new iterate as chain is generated (discards first half though)
+            '''
             if save == 'y' and i > int(n_iterates/2):
                 f = open('chain.txt', 'a')
                 f.write('\n' + str(chain[i]))
                 f.close()
+            '''
 
     if calibrate is True:
         print('w = ' + str(w))
@@ -139,15 +140,13 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
             acceptance_rate = accepts[i]/ n_iterates
             print('Acceptance rate for ' + param_names[i] is str(acceptance_rate))
 
-    chain_half = chain[int(n_iterates / 2):, :]
-    MCMC_param = chain[-1, 1:]  # TODO: Look at last estimated ll
-
     # Modifying data to make
     # easier to retrieve values
-    chain = pd.DataFrame(chain, columns=['ll'] + param_names)
+    chain_half = pd.DataFrame(chain[int(n_iterates / 2):, :], columns=['ll'] + param_names)
+    MCMC_param = chain[-1, 1:]  # TODO: Look at last estimated ll
 
-    best_ll_index = chain[['ll']].idxmax()
-    best_ll_row = chain.iloc[best_ll_index, :]
+    best_ll_index = chain_half[['ll']].idxmax()
+    best_ll_row = chain_half.iloc[best_ll_index, :]
 
     if save == 'y':
         f = open('chain_info.txt', 'a')
@@ -161,4 +160,4 @@ def run_chain(model_ll, param_names, init_param, V_data, drug, max_time, n_itera
         f.write('\n' + 'best_ll row = ' + str(best_ll_row))
         f.close()
 
-    return [chain, best_ll_row[1:], MCMC_param]
+    return [chain_half, best_ll_row[1:], MCMC_param]
