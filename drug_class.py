@@ -24,8 +24,10 @@ class Drug:
         return 1 - ((self.epsilon_max * D) / (D + self.EC50))
 
 
-    def solve_TIV(self, param, max_time):
+#    def t_admin(self, t):
 
+
+    def solve_TIV(self, param, max_time):
         # Input parameters
         g = 0.8
         beta_dot = param[0]
@@ -35,57 +37,88 @@ class Drug:
         deltaV = param[4]
 
         # Initial conditions
-        D0 = self.dose_admin
+        G0 = self.dose_admin
+        D0 = 0
         T0 = 4e+8  # Fixing this parameter 7e+7
         I0 = 0
         V0 = param[5]
 
-        y_init = [D0, T0, I0, V0]
+        y_init = [G0, D0, T0, I0, V0]
 
         # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
-        if self.type == 'rep':
+        #if self.type == 'rep':
             # Write differential equations describing TIV drug model (right-hand side)
-            def rhs(t, y):
-                D, T, I, V = y
-                i += 1
-                return [self.omega * self.ka * self.dose_admin * math.e ** (self.ka * (t - self.t_admin[i])) - self.ke * D,
-                        g * T * (1 - (T + I) / T0) - (beta_dot * V * T),
-                        beta_dot * V * T - (deltaI * I),
-                        pV * self.drug_factor(D) * I - (deltaV * V) - (beta * V * T)]
+        def rhs(t, y):
+            G, D, T, I, V = y  # Add new equation
+            return [-self.ka * G,
+                    (self.omega * self.ka * G) - (self.ke * D),
+                    g * T * (1 - (T + I) / T0) - (beta_dot * V * T),
+                    beta_dot * V * T - (deltaI * I),
+                    pV * self.drug_factor(D) * I - (deltaV * V) - (beta * V * T)]
 
-        # Create an array of measurement time points (Day 1, 2, 3, ... 8)
-        #measurement_times = np.arange(0, max_time, 1)
-        # TODO: Change it so you get at every hour? For testing drug effect
-        measurement_times = np.linspace(0, max_time, max_time*24)
+
+        # Create an array of measurement time points (Every hour until the next point of administration)
+        measurement_times = np.arange(0, self.t_admin, 1)
 
         # Solve TIV
-        sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
-        return sol  # NOTE: Returns raw (not log) values
+
+        # Solve ODEs for initial conditions until the next time point for drug administration, add solutions to all_sol
+        t = 0  # time tracker
+        all_sol = solve_ivp(rhs, t_span=(0, self.t_admin), y0=y_init, method='BDF', t_eval=measurement_times)
+        t += self.t_admin
+
+        while t < max_time:
+            # Update initial conditions to the conditions at the end of the previously solved ODEs
+            G0 = all_sol.y[0][-1].copy() + self.dose_admin  # G (drug administered) is the amount of drug leftover + new amount of drug administered
+            D0 = all_sol.y[1, -1].copy()
+            T0 = all_sol.y[2, -1].copy()
+            I0 = all_sol.y[3, -1].copy()
+            V0 = all_sol.y[4, -1].copy()
+
+            y_init = [G0, D0, T0, I0, V0]
+
+            # Solve again for the next __ hours until the drug is administered again
+            sol = solve_ivp(rhs, t_span=(0, self.t_admin), y0=y_init, method='BDF', t_eval=measurement_times)
+
+            # Add solution to previous chains of solutions
+            all_sol.t = np.append(all_sol.t, np.arange(all_sol.t[-1] + 1, all_sol.t[-1] + self.t_admin + 1))
+
+            all_sol.y = np.hstack((all_sol.y, sol.y))
+
+            # Update time
+            t += self.t_admin
+
+        print (all_sol)
+        return all_sol  # NOTE: Returns raw (not log) values
 
     # Plot pharmacokinetics
     def plot_PK(self, param, max_time):
         sol = self.solve_TIV(param, max_time)
 
         fig1, ax1 = plt.subplots()
-        ax1.plot(sol.t, sol.y[0], '-', color='blue')  # Plot guess fitted parameter solution
+        ax1.plot(sol.t, sol.y[0], 'o', color='blue')  # Plot guess fitted parameter solution
 
         ax1.set_title('PK')
-        ax1.set_xlabel('Days')
-        ax1.set_ylabel('D')
+        ax1.set_xlabel('Hours')
+        ax1.set_ylabel('D (ng/mL)')
 
         #    plt.savefig(str(MCMC_param) + '_Vcurve' + '.png')  # Save as .png
 
         return plt.show()
+
+    # Step-wise dose_admin function
+
+    # For loop, Iteration every 12 hours, y_init = last conditions and D = leftover (d_admin * math.e ** (-k * t (i.e. 12)) + new dose admin (75 mg)
 
     # Plot viral load curve given param
     def plot_TIV(self, param, max_time):
         sol = self.solve_TIV(param, max_time)
 
         fig1, ax1 = plt.subplots()
-        ax1.plot(sol.t, sol.y[2], '-', color='blue')  # Plot guess fitted parameter solution
+        ax1.plot(sol.t, sol.y[4], '-', color='blue')  # Plot guess fitted parameter solution
 
         ax1.set_title('Viral Load')
-        ax1.set_xlabel("Days")
+        ax1.set_xlabel("Hours")
         ax1.set_ylabel("Viral load (log TCID50)")
         ax1.set_yscale('log')
 
@@ -94,13 +127,14 @@ class Drug:
         return plt.show()
 
 
+# Defining drug and drug parameters
+OST = Drug(type='rep', EC50=36.1, epsilon_max=0.98, dose_admin=75, t_admin=12, ka=0.46, ke=0.11, omega=4.63)
 
-OST = Drug(type='rep', EC50=36.1, epsilon_max=0.98, dose_admin=75, t_admin=0, ka=11.04, ke=2.64, omega=4.63)
+# Plot pharmacokinetics of OST
+sol = OST.plot_PK(param=[0.000217, 0.000751, 3.3, 75, 35, 6], max_time=8*12)
 
-
-sol = OST.plot_PK(param=[0.000217, 0.000751, 3.3, 75, 35, 6], max_time=8)
-
-OST.plot_TIV(param=[0.000217, 0.000751, 3.3, 75, 35, 6], max_time=8)
+# Plot viral load curve of OST-treated ferret
+OST.plot_TIV(param=[0.000217, 0.000751, 3.3, 75, 35, 6], max_time=8*12)
 
 
 class EntDrug(Drug):

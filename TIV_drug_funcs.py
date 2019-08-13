@@ -24,12 +24,13 @@ def TIV_drug_model(Drug, param, max_time):  # where drug = [type, epsilon], para
     deltaV = param[4]
 
     # If drug present, adjust respective parameter that drug acts on by multiplying with drug scaling factor
+    '''
     if Drug.type == 'rep':
         pV = pV * (1 - Drug.epsilon)
 
     if Drug.type == 'ent':
         beta_dot = beta_dot * (1 - Drug.epsilon)
-
+    '''
     # Initial conditions
     T0 = 4e+8  # Fixing this parameter 7e+7
     I0 = 0
@@ -85,6 +86,7 @@ def TIV_Drug_model(Drug, param, max_time):  # where drug = [type, epsilon], para
     # Solve TIV
     sol = solve_ivp(rhs, t_span=(0, max_time), y0=y_init, method='BDF', t_eval=measurement_times)
     return sol  # NOTE: Returns raw (not log) values
+
 
 def TLIV_drug_model(drug, param, max_time):  # where drug = [type, epsilon], param = [
 

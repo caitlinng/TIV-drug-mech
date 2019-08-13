@@ -28,7 +28,7 @@ plc_param = [beta_dot, beta, deltaI, pV, deltaV, V0]
 
 
 # Generate placebo data with fitted parameters from real data
-fitted_data = TIV.TIV_drug_model(Drug='plc', param=final_fit_param, max_time=8)
+#fitted_data = TIV.TIV_drug_model(Drug='plc', param=final_fit_param, max_time=8)
 #test_fit(TIV.TIV_drug_model, 'plc', fitted_data.y[2], fitted_param, len(plc_data.y[2]))
 
 '''
